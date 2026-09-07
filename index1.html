@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medication Tracker Widget</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --success: #10b981;
+            --danger: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 16px;
+        }
+
+        .tracker-widget {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            width: 100%;
+            max-width: 420px;
+            padding: 24px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .header h2 {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .streak-badge {
+            background-color: #fef3c7;
+            color: #d97706;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .med-form {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .med-form input {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .med-form input:focus {
+            border-color: var(--primary);
+        }
+
+        .med-form input[type="text"] {
+            flex: 2;
+        }
+
+        .med-form input[type="text"].dosage {
+            flex: 1;
+        }
+
+        .med-form button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .med-form button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .med-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .med-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background-color: #fff;
+            transition: all 0.2s ease;
+        }
+
+        .med-item.taken {
+            background-color: #f0fdf4;
+            border-color: #bbf7d0;
+        }
+
+        .med-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .med-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .med-item.taken .med-name {
+            text-decoration: line-through;
+            color: var(--text-muted);
+        }
+
+        .med-dosage {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .med-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .check-btn {
+            background: none;
+            border: 2px solid var(--border);
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .med-item.taken .check-btn {
+            background-color: var(--success);
+            border-color: var(--success);
+        }
+
+        .delete-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 1.1rem;
+            padding: 0 4px;
+        }
+
+        .delete-btn:hover {
+            color: var(--danger);
+        }
+
+        .empty-state {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            padding: 16px 0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="tracker-widget">
+    <div class="header">
+        <h2>Medication Tracker</h2>
+        <div class="streak-badge">
+            🔥 <span id="streak-count">0</span> Days
+        </div>
+    </div>
+
+    <form class="med-form" id="med-form">
+        <input type="text" id="med-name" placeholder="Medication" required />
+        <input type="text" id="med-dosage" class="dosage" placeholder="Dose (e.g. 10mg)" required />
+        <button type="submit">Add</button>
+    </form>
+
+    <ul class="med-list" id="med-list"></ul>
+</div>
+
+<script>
+    // State management
+    let state = JSON.parse(localStorage.getItem('medTrackerState')) || {
+        medications: [],
+        streak: 0,
+        lastCompletedDate: null
+    };
+
+    const medForm = document.getElementById('med-form');
+    const medNameInput = document.getElementById('med-name');
+    const medDosageInput = document.getElementById('med-dosage');
+    const medList = document.getElementById('med-list');
+    const streakCount = document.getElementById('streak-count');
+
+    function saveState() {
+        localStorage.setItem('medTrackerState', JSON.stringify(state));
+    }
+
+    function getTodayDateString() {
+        return new Date().toISOString().split('T')[0];
+    }
+
+    function checkAndResetDailyStatus() {
+        const today = getTodayDateString();
+        
+        // Check if streak was broken (missed yesterday)
+        if (state.lastCompletedDate) {
+            const lastDate = new Date(state.lastCompletedDate);
+            const currentDate = new Date(today);
+            const diffTime = Math.abs(currentDate - lastDate);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays > 1) {
+                state.streak = 0; // Reset streak if missed more than a day
+            }
+        }
+
+        // Reset daily checkmarks if it's a new day
+        const lastCheckDate = localStorage.getItem('medTrackerLastCheckDate');
+        if (lastCheckDate !== today) {
+            state.medications.forEach(med => med.takenToday = false);
+            localStorage.setItem('medTrackerLastCheckDate', today);
+            saveState();
+        }
+    }
+
+    function updateStreak() {
+        const today = getTodayDateString();
+        const allTaken = state.medications.length > 0 && state.medications.every(m => m.takenToday);
+
+        if (allTaken) {
+            if (state.lastCompletedDate !== today) {
+                state.streak += 1;
+                state.lastCompletedDate = today;
+            }
+        } else {
+            // If user unchecks a box on the same day they completed it
+            if (state.lastCompletedDate === today) {
+                state.streak = Math.max(0, state.streak - 1);
+                state.lastCompletedDate = null;
+            }
+        }
+        saveState();
+        render();
+    }
+
+    function addMedication(name, dosage) {
+        state.medications.push({
+            id: Date.now(),
+            name,
+            dosage,
+            takenToday: false
+        });
+        saveState();
+        render();
+    }
+
+    function toggleMedication(id) {
+        state.medications = state.medications.map(med => {
+            if (med.id === id) {
+                return { ...med, takenToday: !med.takenToday };
+            }
+            return med;
+        });
+        updateStreak();
+    }
+
+    function deleteMedication(id) {
+        state.medications = state.medications.filter(med => med.id !== id);
+        updateStreak();
+    }
+
+    function render() {
+        streakCount.textContent = state.streak;
+        medList.innerHTML = '';
+
+        if (state.medications.length === 0) {
+            medList.innerHTML = '<li class="empty-state">No medications added yet.</li>';
+            return;
+        }
+
+        state.medications.forEach(med => {
+            const li = document.createElement('li');
+            li.className = `med-item ${med.takenToday ? 'taken' : ''}`;
+            
+            li.innerHTML = `
+                <div class="med-info">
+                    <span class="med-name">${escapeHtml(med.name)}</span>
+                    <span class="med-dosage">${escapeHtml(med.dosage)}</span>
+                </div>
+                <div class="med-actions">
+                    <button class="check-btn" onclick="toggleMedication(${med.id})" aria-label="Toggle taken status">
+                        ${med.takenToday ? '✓' : ''}
+                    </button>
+                    <button class="delete-btn" onclick="deleteMedication(${med.id})" aria-label="Delete medication">
+                        &times;
+                    </button>
+                </div>
+            `;
+            medList.appendChild(li);
+        });
+    }
+
+    function escapeHtml(str) {
+        return str.replace(/[&<>"']/g, (m) => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        })[m]);
+    }
+
+    medForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const name = medNameInput.value.trim();
+        const dosage = medDosageInput.value.trim();
+        
+        if (name && dosage) {
+            addMedication(name, dosage);
+            medNameInput.value = '';
+            medDosageInput.value = '';
+            medNameInput.focus();
+        }
+    });
+
+    // Initial setup
+    checkAndResetDailyStatus();
+    render();
+</script>
+</body>
+</html>
