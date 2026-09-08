@@ -1,550 +1,431 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Medication Calendar & Frequency Tracker</title>
-    <style>
-        :root {
-            --primary: #4f46e5;
-            --primary-hover: #4338ca;
-            --bg: #f8fafc;
-            --card-bg: #ffffff;
-            --text: #1e293b;
-            --text-muted: #64748b;
-            --border: #e2e8f0;
-            --success: #10b981;
-            --success-light: #d1fae5;
-            --danger: #ef4444;
-            --accent: #f59e0b;
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-
-        body {
-            background-color: var(--bg);
-            color: var(--text);
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            min-height: 100vh;
-            padding: 24px 16px;
-        }
-
-        .app-container {
-            width: 100%;
-            max-width: 800px;
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 20px;
-        }
-
-        @media (min-width: 768px) {
-            .app-container { grid-template-columns: 340px 1fr; }
-        }
-
-        .card {
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 20px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-        }
-
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-        }
-
-        .streak-badge {
-            background-color: #fef3c7;
-            color: var(--accent);
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-weight: 700;
-            font-size: 0.85rem;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        /* Calendar Styles */
-        .calendar-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-        }
-
-        .calendar-header button {
-            background: none;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            width: 32px;
-            height: 32px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        .calendar-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 6px;
-            text-align: center;
-        }
-
-        .day-label {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            font-weight: 600;
-            padding-bottom: 4px;
-        }
-
-        .day-cell {
-            aspect-ratio: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            border-radius: 8px;
-            border: 1px solid transparent;
-            font-size: 0.85rem;
-            cursor: pointer;
-            position: relative;
-        }
-
-        .day-cell:hover { background-color: #f1f5f9; }
-        .day-cell.selected { border-color: var(--primary); font-weight: bold; }
-        .day-cell.today { background-color: #e0e7ff; color: var(--primary); font-weight: bold; }
-        .day-cell.completed { background-color: var(--success-light); color: #065f46; }
-        
-        .dot-indicator {
-            width: 4px;
-            height: 4px;
-            background-color: var(--primary);
-            border-radius: 50%;
-            margin-top: 2px;
-        }
-
-        /* Form Styles */
-        .form-group { margin-bottom: 12px; }
-        .form-group label { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; color: var(--text-muted); }
-        .form-group input, .form-group select {
-            width: 100%;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 8px 10px;
-            font-size: 0.875rem;
-            outline: none;
-        }
-
-        .days-selector {
-            display: flex;
-            gap: 4px;
-            margin-top: 4px;
-        }
-
-        .day-btn {
-            flex: 1;
-            padding: 6px 0;
-            font-size: 0.75rem;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            background: var(--card-bg);
-            cursor: pointer;
-        }
-
-        .day-btn.active {
-            background-color: var(--primary);
-            color: white;
-            border-color: var(--primary);
-        }
-
-        .btn-submit {
-            width: 100%;
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 10px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-
-        .btn-submit:hover { background-color: var(--primary-hover); }
-
-        /* Med List Styles */
-        .med-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
-        .med-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px;
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            background-color: #fff;
-        }
-
-        .med-item.taken { background-color: #f0fdf4; border-color: #bbf7d0; }
-        .med-item.taken .med-name { text-decoration: line-through; color: var(--text-muted); }
-
-        .med-info { display: flex; flex-direction: column; }
-        .med-name { font-weight: 600; font-size: 0.95rem; }
-        .med-details { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
-
-        .check-btn {
-            background: none;
-            border: 2px solid var(--border);
-            border-radius: 50%;
-            width: 28px;
-            height: 28px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-        }
-
-        .med-item.taken .check-btn { background-color: var(--success); border-color: var(--success); color: white; }
-        .delete-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.1rem; margin-left: 8px; }
-        .delete-btn:hover { color: var(--danger); }
-        .empty-state { text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 20px 0; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Med Tracker</title>
+<style>
+  :root{
+    --bg:#1b1b1b;
+    --card:#2a2a2a;
+    --accent:#e8b04b;
+    --accent2:#6bb894;
+    --text:#f2f2f2;
+    --muted:#999;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    padding:20px;
+    max-width:480px;
+    margin:0 auto;
+  }
+  h1{
+    font-size:1.4rem;
+    text-align:center;
+    margin-bottom:4px;
+  }
+  .sub{
+    text-align:center;
+    color:var(--muted);
+    font-size:.85rem;
+    margin-bottom:20px;
+  }
+  .card{
+    background:var(--card);
+    border-radius:16px;
+    padding:18px;
+    margin-bottom:16px;
+    box-shadow:0 2px 8px rgba(0,0,0,.3);
+  }
+  .day-count{
+    text-align:center;
+  }
+  .day-count .num{
+    font-size:3rem;
+    font-weight:700;
+    color:var(--accent2);
+    line-height:1;
+  }
+  .day-count .label{
+    color:var(--muted);
+    font-size:.9rem;
+    margin-top:4px;
+  }
+  .row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+  }
+  input, select{
+    background:#3a3a3a;
+    border:1px solid #4a4a4a;
+    color:var(--text);
+    padding:10px;
+    border-radius:8px;
+    font-size:1rem;
+    width:100%;
+  }
+  label{
+    font-size:.8rem;
+    color:var(--muted);
+    display:block;
+    margin-bottom:4px;
+  }
+  button{
+    background:var(--accent);
+    color:#1b1b1b;
+    border:none;
+    padding:12px;
+    border-radius:8px;
+    font-weight:700;
+    font-size:1rem;
+    cursor:pointer;
+    width:100%;
+    margin-top:10px;
+  }
+  button:active{ opacity:.8; }
+  button.secondary{
+    background:#3a3a3a;
+    color:var(--text);
+    font-weight:500;
+  }
+  .med-item{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:12px 0;
+    border-bottom:1px solid #3a3a3a;
+  }
+  .med-item:last-child{ border-bottom:none; }
+  .med-name{ font-weight:600; }
+  .med-time{ color:var(--accent); font-size:.9rem; }
+  .taken-btn{
+    background:var(--accent2);
+    color:#1b1b1b;
+    border:none;
+    padding:8px 14px;
+    border-radius:6px;
+    font-weight:700;
+    cursor:pointer;
+    width:auto;
+    margin:0;
+  }
+  .taken-btn.done{
+    background:#4a4a4a;
+    color:var(--muted);
+  }
+  .empty{
+    text-align:center;
+    color:var(--muted);
+    padding:20px 0;
+    font-size:.9rem;
+  }
+  .del{
+    background:none;
+    border:none;
+    color:#c66;
+    font-size:1.1rem;
+    width:auto;
+    padding:0 6px;
+    margin:0;
+  }
+  .cal-header{
+    font-size:.75rem;
+    color:var(--muted);
+    text-align:center;
+    margin-bottom:6px;
+  }
+  .cal-grid{
+    display:grid;
+    grid-template-columns:repeat(7, 1fr);
+    gap:3px;
+  }
+  .cal-dow{
+    text-align:center;
+    font-size:.65rem;
+    color:var(--muted);
+    padding-bottom:2px;
+  }
+  .cal-cell{
+    aspect-ratio:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:.7rem;
+    border-radius:6px;
+    background:#333;
+    color:var(--muted);
+  }
+  .cal-cell.empty-cell{
+    background:none;
+  }
+  .cal-cell.taken{
+    background:var(--accent2);
+    color:#1b1b1b;
+    font-weight:700;
+  }
+  .cal-cell.today{
+    border:1.5px solid var(--accent);
+  }
+  .form-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-bottom:10px;
+  }
+  #status{
+    text-align:center;
+    font-size:.8rem;
+    color:var(--muted);
+    min-height:16px;
+    margin-top:6px;
+  }
+</style>
 </head>
 <body>
 
-<div class="app-container">
-    <!-- Left Column: Calendar & Add Med Form -->
-    <div style="display: flex; flex-direction: column; gap: 20px;">
-        
-        <!-- Calendar Card -->
-        <div class="card">
-            <div class="header">
-                <h3 style="font-size:1.1rem;">Calendar</h3>
-                <div class="streak-badge">🔥 <span id="streak-count">0</span> Day Streak</div>
-            </div>
-            <div class="calendar-header">
-                <button id="prev-month">&lt;</button>
-                <strong id="calendar-month-year"></strong>
-                <button id="next-month">&gt;</button>
-            </div>
-            <div class="calendar-grid" id="calendar-grid"></div>
-        </div>
+<h1>💊 Med Tracker</h1>
+<div class="sub">Take drug on time. Count the days.</div>
 
-        <!-- Add Medication Form Card -->
-        <div class="card">
-            <h3 style="font-size:1.1rem; margin-bottom: 12px;">Add Medication</h3>
-            <form id="med-form">
-                <div class="form-group">
-                    <label>Medication Name</label>
-                    <input type="text" id="med-name" placeholder="e.g. Amoxicillin" required />
-                </div>
-                <div class="form-group">
-                    <label>Dosage</label>
-                    <input type="text" id="med-dosage" placeholder="e.g. 500mg" required />
-                </div>
-                <div class="form-group">
-                    <label>Schedule Type</label>
-                    <select id="med-freq-type">
-                        <option value="daily">Daily</option>
-                        <option value="specific_days">Specific Days of Week</option>
-                        <option value="interval">Interval (Every X hours)</option>
-                    </select>
-                </div>
+<div class="card day-count">
+  <div class="num" id="dayNum">0</div>
+  <div class="label">days since start</div>
+  <button class="secondary" id="resetDayBtn">Reset day counter</button>
+</div>
 
-                <!-- Custom Frequency Options -->
-                <div id="days-option" class="form-group" style="display: none;">
-                    <label>Select Days</label>
-                    <div class="days-selector">
-                        <button type="button" class="day-btn" data-day="0">S</button>
-                        <button type="button" class="day-btn" data-day="1">M</button>
-                        <button type="button" class="day-btn" data-day="2">T</button>
-                        <button type="button" class="day-btn" data-day="3">W</button>
-                        <button type="button" class="day-btn" data-day="4">T</button>
-                        <button type="button" class="day-btn" data-day="5">F</button>
-                        <button type="button" class="day-btn" data-day="6">S</button>
-                    </div>
-                </div>
+<div class="card">
+  <div class="row" style="margin-bottom:10px;">
+    <strong>Today's meds</strong>
+  </div>
+  <div id="medList"><div class="empty">No med added yet.</div></div>
+</div>
 
-                <div id="interval-option" class="form-group" style="display: none;">
-                    <label>Frequency (Hours)</label>
-                    <input type="number" id="med-interval" min="1" max="24" value="8" placeholder="e.g. 8" />
-                </div>
-
-                <button type="submit" class="btn-submit">Add Schedule</button>
-            </form>
-        </div>
+<div class="card">
+  <strong>Add a med reminder</strong>
+  <div class="form-grid" style="margin-top:10px;">
+    <div>
+      <label>Name</label>
+      <input type="text" id="medName" placeholder="e.g. Aspirin">
     </div>
-
-    <!-- Right Column: Selected Day Schedule -->
-    <div class="card">
-        <div class="header">
-            <h2 id="selected-date-title" style="font-size:1.2rem;">Today's Medications</h2>
-        </div>
-        <ul class="med-list" id="med-list"></ul>
+    <div>
+      <label>Time</label>
+      <input type="time" id="medTime">
     </div>
+  </div>
+  <button id="addMedBtn">Add reminder</button>
+  <div id="status"></div>
 </div>
 
 <script>
-    // State Initialization
-    let state = JSON.parse(localStorage.getItem('medCalendarState')) || {
-        medications: [],
-        logs: {} // Formatted as { "YYYY-MM-DD": { medId: true/false } }
-    };
+const DAY_KEY = 'startDate';
+const MED_KEY = 'medsList';
+const TAKEN_KEY_PREFIX = 'taken:';
 
-    let currentDate = new Date();
-    let selectedDateStr = formatDate(new Date());
-    let selectedDaysOfWeek = [];
+function todayStr(){
+  return new Date().toISOString().slice(0,10);
+}
 
-    // Elements
-    const calendarGrid = document.getElementById('calendar-grid');
-    const calendarMonthYear = document.getElementById('calendar-month-year');
-    const selectedDateTitle = document.getElementById('selected-date-title');
-    const medList = document.getElementById('med-list');
-    const medForm = document.getElementById('med-form');
-    const freqTypeSelect = document.getElementById('med-freq-type');
-    const daysOption = document.getElementById('days-option');
-    const intervalOption = document.getElementById('interval-option');
-    const streakCount = document.getElementById('streak-count');
+async function getVal(key){
+  try{
+    const r = await window.storage.get(key, false);
+    return r ? JSON.parse(r.value) : null;
+  }catch(e){
+    return null;
+  }
+}
+async function setVal(key, val){
+  try{
+    await window.storage.set(key, JSON.stringify(val), false);
+  }catch(e){
+    console.error('storage error', e);
+  }
+}
 
-    function saveState() {
-        localStorage.setItem('medCalendarState', JSON.stringify(state));
-    }
+async function initDayCounter(){
+  let start = await getVal(DAY_KEY);
+  if(!start){
+    start = todayStr();
+    await setVal(DAY_KEY, start);
+  }
+  renderDayCount(start);
+}
 
-    function formatDate(d) {
-        return d.toISOString().split('T')[0];
-    }
+function renderDayCount(start){
+  const startDate = new Date(start + 'T00:00:00');
+  const now = new Date();
+  const diffDays = Math.floor((now - startDate) / (1000*60*60*24)) + 1;
+  document.getElementById('dayNum').textContent = diffDays > 0 ? diffDays : 1;
+}
 
-    // Dynamic Form UI Toggle
-    freqTypeSelect.addEventListener('change', (e) => {
-        daysOption.style.display = e.target.value === 'specific_days' ? 'block' : 'none';
-        intervalOption.style.display = e.target.value === 'interval' ? 'block' : 'none';
+document.getElementById('resetDayBtn').addEventListener('click', async ()=>{
+  const start = todayStr();
+  await setVal(DAY_KEY, start);
+  renderDayCount(start);
+});
+
+let medsCache = null;
+
+async function loadMeds(){
+  if(medsCache !== null) return medsCache;
+  const meds = await getVal(MED_KEY);
+  medsCache = meds || [];
+  return medsCache;
+}
+async function saveMeds(meds){
+  medsCache = meds;
+  await setVal(MED_KEY, meds);
+}
+
+async function renderMeds(){
+  const meds = await loadMeds();
+  const list = document.getElementById('medList');
+  if(meds.length === 0){
+    list.innerHTML = '<div class="empty">No med added yet.</div>';
+    return;
+  }
+  const today = todayStr();
+  meds.sort((a,b)=> a.time.localeCompare(b.time));
+
+  list.innerHTML = '';
+  meds.forEach((m)=>{
+    if(!m.takenDates) m.takenDates = [];
+    const dayN = m.takenDates.length;
+    const isTaken = m.takenDates.includes(today);
+    const item = document.createElement('div');
+    item.className = 'med-item';
+    item.style.flexDirection = 'column';
+    item.style.alignItems = 'stretch';
+    item.innerHTML = `
+      <div class="row" style="margin-bottom:8px;">
+        <div>
+          <div class="med-name">${escapeHtml(m.name)} <span style="color:var(--accent2); font-weight:600;">— Day ${dayN}</span></div>
+          <div class="med-time">${formatTime(m.time)}</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <button class="taken-btn ${isTaken?'done':''}" data-id="${m.id}">${isTaken ? 'Taken ✓' : 'Mark taken'}</button>
+          <button class="del" data-id="${m.id}">✕</button>
+        </div>
+      </div>
+      <div class="cal" data-cal="${m.id}"></div>
+    `;
+    list.appendChild(item);
+    renderCalendar(item.querySelector(`.cal[data-cal="${m.id}"]`), m.takenDates);
+  });
+
+  list.querySelectorAll('.taken-btn').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id = btn.getAttribute('data-id');
+      const meds = await loadMeds();
+      const med = meds.find(m => m.id === id);
+      if(!med) return;
+      if(!med.takenDates) med.takenDates = [];
+      const today = todayStr();
+      const idx = med.takenDates.indexOf(today);
+      if(idx >= 0){
+        med.takenDates.splice(idx, 1);
+      } else {
+        med.takenDates.push(today);
+      }
+      await saveMeds(meds);
+      renderMeds();
     });
+  });
 
-    document.querySelectorAll('.day-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const day = parseInt(btn.dataset.day);
-            if (selectedDaysOfWeek.includes(day)) {
-                selectedDaysOfWeek = selectedDaysOfWeek.filter(d => d !== day);
-                btn.classList.remove('active');
-            } else {
-                selectedDaysOfWeek.push(day);
-                btn.classList.add('active');
-            }
-        });
+  list.querySelectorAll('.del').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id = btn.getAttribute('data-id');
+      let meds = await loadMeds();
+      meds = meds.filter(m=>m.id !== id);
+      await saveMeds(meds);
+      renderMeds();
     });
+  });
+}
 
-    // Check if medication is scheduled on a given date
-    function isMedScheduledForDate(med, dateStr) {
-        const targetDate = new Date(dateStr + 'T00:00:00');
-        const dayOfWeek = targetDate.getDay();
+function renderCalendar(container, takenDates){
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const startWeekday = firstDay.getDay();
+  const todayNum = now.getDate();
+  const monthName = now.toLocaleString('default', { month: 'long' });
 
-        if (med.freqType === 'daily') return true;
-        if (med.freqType === 'specific_days') return med.days.includes(dayOfWeek);
-        if (med.freqType === 'interval') return true; // Interval dosage tracked daily
+  const takenSet = new Set(takenDates);
 
-        return true;
-    }
+  let html = `<div class="cal-header">${monthName} ${year}</div><div class="cal-grid">`;
+  ['S','M','T','W','T','F','S'].forEach(d=>{
+    html += `<div class="cal-dow">${d}</div>`;
+  });
+  for(let i=0; i<startWeekday; i++){
+    html += `<div class="cal-cell empty-cell"></div>`;
+  }
+  for(let d=1; d<=daysInMonth; d++){
+    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const taken = takenSet.has(dateStr);
+    const isToday = d === todayNum;
+    html += `<div class="cal-cell ${taken?'taken':''} ${isToday?'today':''}">${d}</div>`;
+  }
+  html += `</div>`;
+  container.innerHTML = html;
+}
 
-    // Render Calendar
-    function renderCalendar() {
-        calendarGrid.innerHTML = '';
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth();
+function daysSince(dateStr){
+  const start = new Date(dateStr + 'T00:00:00');
+  const now = new Date();
+  const diff = Math.floor((now - start) / (1000*60*60*24)) + 1;
+  return diff > 0 ? diff : 1;
+}
 
-        calendarMonthYear.textContent = new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+function formatTime(t){
+  const [h,m] = t.split(':').map(Number);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(m).padStart(2,'0')} ${ampm}`;
+}
 
-        const dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-        dayLabels.forEach(d => {
-            const el = document.createElement('div');
-            el.className = 'day-label';
-            el.textContent = d;
-            calendarGrid.appendChild(el);
-        });
+function escapeHtml(s){
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
 
-        const firstDayIndex = new Date(year, month, 1).getDay();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        const todayStr = formatDate(new Date());
+document.getElementById('addMedBtn').addEventListener('click', async ()=>{
+  const nameEl = document.getElementById('medName');
+  const timeEl = document.getElementById('medTime');
+  const status = document.getElementById('status');
+  const name = nameEl.value.trim();
+  const time = timeEl.value;
+  nameEl.style.borderColor = name ? '#4a4a4a' : '#c66';
+  timeEl.style.borderColor = time ? '#4a4a4a' : '#c66';
+  if(!name || !time){
+    status.textContent = 'Need both name and time (fields in red).';
+    return;
+  }
+  const meds = await loadMeds();
+  meds.push({ id: 'm' + Date.now(), name, time, takenDates: [] });
+  await saveMeds(meds);
+  nameEl.value = '';
+  timeEl.value = '';
+  status.textContent = 'Added: ' + name;
+  setTimeout(()=> status.textContent = '', 1500);
+  await renderMeds();
+});
 
-        for (let i = 0; i < firstDayIndex; i++) {
-            calendarGrid.appendChild(document.createElement('div'));
-        }
-
-        for (let day = 1; day <= daysInMonth; day++) {
-            const cellDate = new Date(year, month, day);
-            const dateStr = formatDate(cellDate);
-            
-            const cell = document.createElement('div');
-            cell.className = 'day-cell';
-            cell.textContent = day;
-
-            if (dateStr === todayStr) cell.classList.add('today');
-            if (dateStr === selectedDateStr) cell.classList.add('selected');
-
-            // Evaluate completion for history
-            const scheduledMeds = state.medications.filter(m => isMedScheduledForDate(m, dateStr));
-            if (scheduledMeds.length > 0) {
-                const dayLogs = state.logs[dateStr] || {};
-                const allTaken = scheduledMeds.every(m => dayLogs[m.id]);
-                if (allTaken) cell.classList.add('completed');
-                else {
-                    const dot = document.createElement('div');
-                    dot.className = 'dot-indicator';
-                    cell.appendChild(dot);
-                }
-            }
-
-            cell.addEventListener('click', () => {
-                selectedDateStr = dateStr;
-                renderCalendar();
-                renderMedList();
-            });
-
-            calendarGrid.appendChild(cell);
-        }
-    }
-
-    // Calculate Streak
-    function calculateStreak() {
-        let streak = 0;
-        let checkDate = new Date();
-
-        while (true) {
-            const dateStr = formatDate(checkDate);
-            const scheduledMeds = state.medications.filter(m => isMedScheduledForDate(m, dateStr));
-            
-            if (scheduledMeds.length === 0) {
-                checkDate.setDate(checkDate.getDate() - 1);
-                continue;
-            }
-
-            const dayLogs = state.logs[dateStr] || {};
-            const allTaken = scheduledMeds.every(m => dayLogs[m.id]);
-
-            if (allTaken) {
-                streak++;
-                checkDate.setDate(checkDate.getDate() - 1);
-            } else if (dateStr === formatDate(new Date())) {
-                // If today is not completed yet, keep checking yesterday without breaking streak
-                checkDate.setDate(checkDate.getDate() - 1);
-            } else {
-                break; // Broken streak
-            }
-        }
-        streakCount.textContent = streak;
-    }
-
-    // Render Medication List for Selected Date
-    function renderMedList() {
-        const displayDate = new Date(selectedDateStr + 'T00:00:00');
-        selectedDateTitle.textContent = selectedDateStr === formatDate(new Date()) 
-            ? "Today's Schedule" 
-            : displayDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-
-        medList.innerHTML = '';
-        const scheduledMeds = state.medications.filter(m => isMedScheduledForDate(m, selectedDateStr));
-
-        if (scheduledMeds.length === 0) {
-            medList.innerHTML = '<li class="empty-state">No medications scheduled for this date.</li>';
-            return;
-        }
-
-        const dayLogs = state.logs[selectedDateStr] || {};
-
-        scheduledMeds.forEach(med => {
-            const isTaken = !!dayLogs[med.id];
-            const li = document.createElement('li');
-            li.className = `med-item ${isTaken ? 'taken' : ''}`;
-
-            let freqLabel = 'Daily';
-            if (med.freqType === 'specific_days') freqLabel = 'Custom Days';
-            if (med.freqType === 'interval') freqLabel = `Every ${med.interval} hours`;
-
-            li.innerHTML = `
-                <div class="med-info">
-                    <span class="med-name">${escapeHtml(med.name)}</span>
-                    <span class="med-details">${escapeHtml(med.dosage)} &bull; ${freqLabel}</span>
-                </div>
-                <div style="display:flex; align-items:center;">
-                    <button class="check-btn" onclick="toggleMed(${med.id})">${isTaken ? '✓' : ''}</button>
-                    <button class="delete-btn" onclick="deleteMed(${med.id})">&times;</button>
-                </div>
-            `;
-            medList.appendChild(li);
-        });
-    }
-
-    function toggleMed(id) {
-        if (!state.logs[selectedDateStr]) state.logs[selectedDateStr] = {};
-        state.logs[selectedDateStr][id] = !state.logs[selectedDateStr][id];
-        saveState();
-        renderMedList();
-        renderCalendar();
-        calculateStreak();
-    }
-
-    function deleteMed(id) {
-        state.medications = state.medications.filter(m => m.id !== id);
-        saveState();
-        renderMedList();
-        renderCalendar();
-        calculateStreak();
-    }
-
-    function escapeHtml(str) {
-        return str.replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[m]);
-    }
-
-    // Form Handler
-    medForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const name = document.getElementById('med-name').value.trim();
-        const dosage = document.getElementById('med-dosage').value.trim();
-        const freqType = freqTypeSelect.value;
-        const interval = document.getElementById('med-interval').value;
-
-        if (!name || !dosage) return;
-
-        const newMed = {
-            id: Date.now(),
-            name,
-            dosage,
-            freqType,
-            days: [...selectedDaysOfWeek],
-            interval: freqType === 'interval' ? parseInt(interval) : null
-        };
-
-        state.medications.push(newMed);
-        saveState();
-
-        // Reset Form
-        document.getElementById('med-name').value = '';
-        document.getElementById('med-dosage').value = '';
-        selectedDaysOfWeek = [];
-        document.querySelectorAll('.day-btn').forEach(btn => btn.classList.remove('active'));
-
-        renderCalendar();
-        renderMedList();
-        calculateStreak();
-    });
-
-    // Calendar Navigation Controls
-    document.getElementById('prev-month').addEventListener('click', () => {
-        currentDate.setMonth(currentDate.getMonth() - 1);
-        renderCalendar();
-    });
-
-    document.getElementById('next-month').addEventListener('click', () => {
-        currentDate.setMonth(currentDate.getMonth() + 1);
-        renderCalendar();
-    });
-
-    // Initial Execution
-    renderCalendar();
-    renderMedList();
-    calculateStreak();
+// init
+initDayCounter();
+renderMeds();
+setInterval(async ()=>{
+  const start = await getVal(DAY_KEY);
+  if(start) renderDayCount(start);
+}, 60000);
 </script>
+
 </body>
 </html>
